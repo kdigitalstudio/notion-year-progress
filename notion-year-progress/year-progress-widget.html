@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Year Progress Widget</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@400;500;600&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #F7F2EA;
+            --text: #3D342C;
+            --accent: #A9825A;
+            --soft: #E9DFD1;
+            --muted: #8C7B6B;
+            --display: 'Cormorant Garamond', Georgia, serif;
+            --body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: var(--body);
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrap {
+            width: 100%;
+            max-width: 560px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .wrap.align-left { align-items: flex-start; text-align: left; }
+        .wrap.align-center { align-items: center; text-align: center; }
+        .wrap.align-right { align-items: flex-end; text-align: right; }
+
+        .label {
+            font-family: var(--display);
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 1.1;
+            letter-spacing: 0.01em;
+        }
+
+        .meta {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .meta-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .align-center .meta-row { justify-content: center; }
+        .align-right .meta-row { justify-content: flex-end; }
+
+        /* ---------- Ring ---------- */
+        .ring {
+            position: relative;
+            width: min(170px, 60vh);
+            aspect-ratio: 1;
+        }
+        .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .ring .track { stroke: var(--soft); }
+        .ring .fill {
+            stroke: var(--accent);
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1.2s cubic-bezier(.2,.7,.2,1);
+        }
+        .ring-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+        .ring-center .pct {
+            font-family: var(--display);
+            font-size: clamp(30px, 14vh, 44px);
+            font-weight: 600;
+            line-height: 1;
+        }
+        .ring-center .sub {
+            font-size: 10px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        /* ---------- Bar ---------- */
+        .bar-block { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+        .bar-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .bar-head .pct {
+            font-family: var(--display);
+            font-size: 34px;
+            font-weight: 600;
+            line-height: 1;
+        }
+        .bar {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: var(--soft);
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            width: 0;
+            border-radius: 999px;
+            background: var(--accent);
+            transition: width 1.2s cubic-bezier(.2,.7,.2,1);
+        }
+        .months {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            font-size: 9px;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+        .months span { text-align: left; }
+
+        /* ---------- Dots (year at a glance) ---------- */
+        .dots {
+            display: grid;
+            grid-template-columns: 14px repeat(31, 1fr);
+            gap: 3px;
+            width: 100%;
+            align-items: center;
+        }
+        .dots .m {
+            font-size: 9px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            text-align: left;
+        }
+        .dot {
+            aspect-ratio: 1;
+            width: 100%;
+            max-width: 12px;
+            border-radius: 50%;
+            background: var(--soft);
+            justify-self: center;
+        }
+        .dot.done { background: var(--accent); }
+        .dot.today {
+            background: var(--accent);
+            box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--accent);
+        }
+        .dot.blank { visibility: hidden; }
+
+        /* fonts */
+        body.font-sans { --display: 'DM Sans', -apple-system, sans-serif; }
+        body.font-sans .label, body.font-sans .pct { font-weight: 500; letter-spacing: -0.01em; }
+        body.font-hand { --display: 'Caveat', 'Bradley Hand', cursive; }
+        body.font-hand .label { font-size: 34px; }
+    </style>
+</head>
+<body>
+    <div class="wrap" id="wrap"></div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+
+        // Only allow plain hex colors (or transparent) so params can't inject CSS
+        function color(key, fallback) {
+            const v = (params.get(key) || '').trim();
+            if (v === 'transparent') return v;
+            return /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ? v : fallback;
+        }
+
+        const year = parseInt(params.get('year'), 10) || 2027;
+        const settings = {
+            year,
+            label: params.has('label') ? params.get('label') : String(year),
+            style: ['ring', 'bar', 'dots'].includes(params.get('style')) ? params.get('style') : 'ring',
+            align: ['left', 'center', 'right'].includes(params.get('align')) ? params.get('align') : 'center',
+            font: ['serif', 'sans', 'hand'].includes(params.get('font')) ? params.get('font') : 'serif',
+            decimals: Math.min(2, Math.max(0, parseInt(params.get('decimals'), 10) || 0)),
+            showPercent: params.get('showPercent') !== 'false',
+            showDaysLeft: params.get('showDaysLeft') !== 'false',
+            showDayOf: params.get('showDayOf') === 'true'
+        };
+
+        const root = document.documentElement.style;
+        root.setProperty('--bg', color('bgColor', '#F7F2EA'));
+        root.setProperty('--text', color('textColor', '#3D342C'));
+        root.setProperty('--accent', color('accentColor', '#A9825A'));
+        root.setProperty('--soft', color('softColor', '#E9DFD1'));
+        root.setProperty('--muted', color('mutedColor', '#8C7B6B'));
+        document.body.classList.add('font-' + settings.font);
+
+        const wrap = document.getElementById('wrap');
+        wrap.classList.add('align-' + settings.align);
+
+        const DAY = 86400000;
+        const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+        const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        function el(tag, cls, text) {
+            const e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (text !== undefined) e.textContent = text;
+            return e;
+        }
+
+        function getProgress() {
+            const now = new Date();
+            const start = new Date(settings.year, 0, 1);
+            const end = new Date(settings.year + 1, 0, 1);
+            const daysInYear = Math.round((end - start) / DAY);
+
+            if (now < start) {
+                const startsIn = Math.ceil((start - now) / DAY);
+                return { state: 'before', pct: 0, daysInYear, dayOfYear: 0, daysLeft: daysInYear, startsIn, now };
+            }
+            if (now >= end) {
+                return { state: 'after', pct: 100, daysInYear, dayOfYear: daysInYear, daysLeft: 0, now };
+            }
+            const pct = ((now - start) / (end - start)) * 100;
+            const dayOfYear = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - start) / DAY + 0.5) + 1;
+            return { state: 'during', pct, daysInYear, dayOfYear, daysLeft: daysInYear - dayOfYear, now };
+        }
+
+        function metaItems(p) {
+            const items = [];
+            if (p.state === 'before') {
+                items.push(p.startsIn === 1 ? 'Begins tomorrow' : 'Begins in ' + p.startsIn + ' days');
+                return items;
+            }
+            if (p.state === 'after') {
+                items.push('Year complete');
+                return items;
+            }
+            if (settings.showDayOf) items.push('Day ' + p.dayOfYear + ' of ' + p.daysInYear);
+            if (settings.showDaysLeft) items.push(p.daysLeft + (p.daysLeft === 1 ? ' day left' : ' days left'));
+            return items;
+        }
+
+        function pctText(p) {
+            return p.pct.toFixed(settings.decimals) + '%';
+        }
+
+        function renderMeta(p) {
+            const items = metaItems(p);
+            if (!items.length) return null;
+            const row = el('div', 'meta-row');
+            items.forEach(t => row.appendChild(el('div', 'meta', t)));
+            return row;
+        }
+
+        // ---------- renderers ----------
+        let fillEl = null;
+
+        function renderRing(p) {
+            const R = 52, C = 2 * Math.PI * R;
+            const ring = el('div', 'ring');
+            ring.innerHTML =
+                '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+                '<circle class="track" cx="60" cy="60" r="' + R + '" fill="none" stroke-width="7"/>' +
+                '<circle class="fill" cx="60" cy="60" r="' + R + '" fill="none" stroke-width="7" ' +
+                'stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '"/></svg>';
+            const center = el('div', 'ring-center');
+            if (settings.showPercent) center.appendChild(el('div', 'pct', pctText(p)));
+            if (settings.label) center.appendChild(el('div', 'sub', settings.label));
+            ring.appendChild(center);
+            wrap.appendChild(ring);
+
+            const m = renderMeta(p);
+            if (m) wrap.appendChild(m);
+
+            fillEl = ring.querySelector('.fill');
+            setFill(fillEl, 'strokeDashoffset', C * (1 - p.pct / 100));
+        }
+
+        function renderBar(p) {
+            const block = el('div', 'bar-block');
+            const head = el('div', 'bar-head');
+            if (settings.label) head.appendChild(el('div', 'label', settings.label));
+            if (settings.showPercent) head.appendChild(el('div', 'pct', pctText(p)));
+            if (head.children.length) block.appendChild(head);
+
+            const bar = el('div', 'bar');
+            const fill = el('div', 'bar-fill');
+            bar.appendChild(fill);
+            block.appendChild(bar);
+
+            const months = el('div', 'months');
+            MONTHS_SHORT.forEach(m => months.appendChild(el('span', '', m)));
+            block.appendChild(months);
+            wrap.appendChild(block);
+
+            const meta = renderMeta(p);
+            if (meta) wrap.appendChild(meta);
+
+            setFill(fill, 'width', p.pct + '%');
+        }
+
+        function renderDots(p) {
+            const head = el('div', 'bar-head');
+            head.style.width = '100%';
+            if (settings.label) head.appendChild(el('div', 'label', settings.label));
+            if (settings.showPercent) head.appendChild(el('div', 'pct', pctText(p)));
+            if (head.children.length) wrap.appendChild(head);
+
+            const grid = el('div', 'dots');
+            const today = new Date(p.now.getFullYear(), p.now.getMonth(), p.now.getDate());
+            for (let m = 0; m < 12; m++) {
+                grid.appendChild(el('div', 'm', MONTHS[m]));
+                const days = new Date(settings.year, m + 1, 0).getDate();
+                for (let d = 1; d <= 31; d++) {
+                    const dot = el('div', 'dot');
+                    if (d > days) {
+                        dot.classList.add('blank');
+                    } else {
+                        const date = new Date(settings.year, m, d);
+                        if (date.getTime() === today.getTime()) dot.classList.add('today');
+                        else if (date < today) dot.classList.add('done');
+                        dot.title = MONTHS_SHORT[m] + ' ' + d;
+                    }
+                    grid.appendChild(dot);
+                }
+            }
+            wrap.appendChild(grid);
+
+            const meta = renderMeta(p);
+            if (meta) wrap.appendChild(meta);
+        }
+
+        // Animate the fill only on first load; minute refreshes update silently
+        let firstRender = true;
+        function setFill(node, prop, value) {
+            if (!firstRender) {
+                node.style.transition = 'none';
+                node.style[prop] = value;
+                return;
+            }
+            requestAnimationFrame(() => requestAnimationFrame(() => { node.style[prop] = value; }));
+        }
+
+        function render() {
+            wrap.innerHTML = '';
+            const p = getProgress();
+            if (settings.style === 'bar') renderBar(p);
+            else if (settings.style === 'dots') renderDots(p);
+            else renderRing(p);
+            firstRender = false;
+        }
+
+        render();
+        // Refresh every minute so percentages and the "today" dot stay current
+        setInterval(render, 60000);
+    </script>
+</body>
+</html>

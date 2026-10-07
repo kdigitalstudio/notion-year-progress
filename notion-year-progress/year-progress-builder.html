@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Year Progress Widget Builder | KDigitalStudio</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #E8DFF5 0%, #FCE1E4 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Ko-fi + feedback boxes (same as the other toolkit builders) */
+        .kofi-container, .feedback-container {
+            position: fixed;
+            left: calc(50% + 350px);
+            transform: translateY(-50%);
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 200px;
+            z-index: 1000;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .kofi-container { top: calc(50% - 100px); }
+        .feedback-container { top: calc(50% + 100px); }
+        .kofi-container:hover, .feedback-container:hover {
+            transform: translateY(-50%) translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+        }
+        .kofi-text, .feedback-text { font-size: 14px; color: #4a5568; margin-bottom: 12px; line-height: 1.4; }
+        .kofi-button, .feedback-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #b794d5 0%, #f4c3d9 100%);
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 13px;
+            transition: transform 0.2s ease;
+        }
+        .kofi-button:hover, .feedback-button:hover { transform: scale(1.05); }
+
+        @media (max-width: 1000px) {
+            .kofi-container, .feedback-container {
+                position: static;
+                transform: none;
+                margin: 0 auto 20px;
+                max-width: 250px;
+            }
+            .kofi-container:hover, .feedback-container:hover { transform: translateY(-2px); }
+        }
+
+        @media (max-width: 560px) {
+            body { padding: 20px 12px; }
+            .container { padding: 28px 20px; }
+        }
+
+        h1 { font-size: 28px; color: #2d3748; margin-bottom: 10px; text-align: center; }
+        .subtitle { text-align: center; color: #718096; margin-bottom: 40px; font-size: 14px; }
+
+        .form-group { margin-bottom: 25px; }
+        label, .label { display: block; font-weight: 600; color: #2d3748; margin-bottom: 8px; font-size: 14px; }
+        .hint { font-weight: 400; color: #718096; font-size: 12px; margin-top: 6px; line-height: 1.5; }
+
+        input[type="text"], input[type="number"], textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            color: #2d3748;
+            background: white;
+            transition: border-color 0.3s;
+        }
+        textarea { resize: vertical; min-height: 140px; line-height: 1.5; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #b794d5; }
+
+        /* Option cards (font, alignment, layout, style) */
+        .choice-group { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); }
+        .choice {
+            padding: 14px 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            background: white;
+            color: #2d3748;
+            font-family: inherit;
+        }
+        .choice:hover { border-color: #cbd5e0; }
+        .choice.selected { border-color: #b794d5; background: #faf7fd; }
+        .choice .big { display: block; font-size: 24px; line-height: 1.2; }
+        .choice small { display: block; font-size: 11px; margin-top: 5px; color: #718096; }
+
+        /* Theme presets */
+        .presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .preset {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px 6px 8px;
+            cursor: pointer;
+            background: white;
+            text-align: center;
+            font-family: inherit;
+            transition: border-color .2s;
+        }
+        .preset:hover { border-color: #cbd5e0; }
+        .preset.selected { border-color: #b794d5; background: #faf7fd; }
+        .swatch {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            margin: 0 auto 6px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+        }
+        .swatch i { position: absolute; inset: 0; }
+        .swatch i:nth-child(2) { clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+        .swatch i:nth-child(3) { inset: 13px; border-radius: 50%; }
+        .preset small { font-size: 11px; color: #4a5568; }
+
+        .colors { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
+        .color-item { display: flex; align-items: center; gap: 10px; }
+        .color-item input[type="color"] {
+            width: 44px; height: 44px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 3px;
+            cursor: pointer;
+            background: white;
+            flex-shrink: 0;
+        }
+        .color-item .name { font-size: 13px; font-weight: 600; color: #2d3748; }
+        .color-item .hex { font-family: 'Courier New', monospace; font-size: 12px; color: #718096; }
+
+        /* Toggles */
+        .toggle-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .toggle-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            gap: 10px;
+            transition: border-color 0.2s;
+        }
+        .toggle-item:has(input:checked) { border-color: #b794d5; background: #faf7fd; }
+        .toggle-switch { position: relative; width: 40px; height: 20px; flex-shrink: 0; margin: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background-color: #cbd5e0; transition: 0.3s; border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+            background-color: white; transition: 0.3s; border-radius: 50%;
+        }
+        .toggle-switch input:checked + .slider { background-color: #b794d5; }
+        .toggle-switch input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Repeating rows (goals) */
+        .rows { display: flex; flex-direction: column; gap: 8px; }
+        .row { display: grid; grid-template-columns: 58px 1fr 70px 36px 32px; gap: 6px; align-items: center; }
+        .row input[type="text"], .row input[type="number"] { padding: 10px 10px; font-size: 14px; }
+        .row input.emoji { text-align: center; }
+        .row input[type="color"] { width: 36px; height: 40px; border: 2px solid #e2e8f0; border-radius: 8px; padding: 2px; background: white; cursor: pointer; }
+        .row-head { display: grid; grid-template-columns: 58px 1fr 70px 36px 32px; gap: 6px; font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+        .icon-btn {
+            width: 32px; height: 32px; border-radius: 8px; border: none;
+            background: #f7fafc; color: #a0aec0; cursor: pointer; font-size: 16px;
+        }
+        .icon-btn:hover { background: #fed7d7; color: #c53030; }
+        .add-btn {
+            margin-top: 10px;
+            background: none; border: 2px dashed #cbd5e0; border-radius: 10px;
+            width: 100%; padding: 10px; color: #4a5568; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 14px;
+        }
+        .add-btn:hover { border-color: #b794d5; color: #453952; }
+        @media (max-width: 560px) {
+            .row, .row-head { grid-template-columns: 50px 1fr 58px 32px 30px; }
+            .presets { grid-template-columns: repeat(3, 1fr); }
+            .colors, .toggle-group { grid-template-columns: 1fr; }
+        }
+
+        .preview-section {
+            margin: 40px 0 0;
+            padding: 24px;
+            background: #f7fafc;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .preview-label {
+            font-weight: 600; color: #2d3748; margin-bottom: 16px; font-size: 14px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .preview-frame-wrap {
+            border: 2px dashed #cbd5e0;
+            border-radius: 10px;
+            overflow: hidden;
+            background:
+                repeating-conic-gradient(#f1f1f1 0% 25%, #ffffff 0% 50%) 50% / 16px 16px;
+        }
+        #preview-frame { display: block; width: 100%; height: 320px; border: 0; background: transparent; }
+
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #E8DFF5 0%, #FCE1E4 100%);
+            color: #453952;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            font-family: inherit;
+        }
+        .generate-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: #f0fff4;
+            border: 2px solid #9ae6b4;
+            border-radius: 12px;
+        }
+        .result-section.show { display: block; }
+        .result-label { font-weight: 600; color: #2d3748; margin-bottom: 10px; font-size: 14px; }
+        .url-display {
+            background: white; padding: 12px; border-radius: 8px; word-break: break-all;
+            font-family: 'Courier New', monospace; font-size: 13px; color: #4a5568; margin-bottom: 15px;
+            max-height: 140px; overflow: auto;
+        }
+        .copy-btn {
+            width: 100%; padding: 12px; background: #48bb78; color: white; border: none;
+            border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; font-family: inherit; font-size: 14px;
+        }
+        .copy-btn:hover { background: #38a169; }
+        .copy-btn.copied { background: #2d3748; }
+        .instructions {
+            margin-top: 20px; padding: 20px; background: #edf2f7; border-radius: 10px;
+            font-size: 14px; line-height: 1.6; color: #4a5568;
+        }
+        .instructions strong { color: #2d3748; }
+
+        .footer { text-align: center; margin-top: 40px; color: #718096; font-size: 13px; }
+        .footer a { color: #8a63b0; text-decoration: none; font-weight: 600; }
+
+        .section-divider { border-top: 2px solid #e2e8f0; margin: 30px 0; }
+        .section-title {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+            color: #718096; margin-bottom: 20px; font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="kofi-container">
+        <div class="kofi-text">Are you loving it? Thank you for your support!</div>
+        <a href="https://ko-fi.com/kdigitalstudio" target="_blank" class="kofi-button">☕ Buy me a diet coke</a>
+    </div>
+
+    <div class="feedback-container">
+        <div class="feedback-text">Have feedback or a feature request?</div>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSfns1MuZ5_-2Ks7enwSlN4VTMFqJ4LW60yn3Ujex4Uxn0CaXw/viewform?usp=header" target="_blank" class="feedback-button">📝 Share feedback</a>
+    </div>
+
+    <div class="container">
+        <h1>✨ Year Progress Widget Builder</h1>
+        <p class="subtitle">Watch your year fill up — a live progress widget for your Notion workspace</p>
+
+        <form id="builder-form" autocomplete="off">
+            <div class="section-title">Settings</div>
+
+            <div class="form-group">
+                <label for="year">Year</label>
+                <input type="number" id="year" data-key="year" min="2000" max="2100">
+                <div class="hint">Before the year starts, the widget shows “Begins in X days.”</div>
+            </div>
+
+            <div class="form-group">
+                <label for="label">Label</label>
+                <input type="text" id="label" data-key="label" placeholder="e.g., 2027, My Year, Year of Bloom">
+                <div class="hint">Leave blank to hide it.</div>
+            </div>
+
+            <div class="form-group">
+                <span class="label">Display Style</span>
+                <div class="choice-group" data-key="style">
+                    <button type="button" class="choice" data-value="ring"><span class="big">◯</span><small>Ring</small></button>
+                    <button type="button" class="choice" data-value="bar"><span class="big">▬</span><small>Bar</small></button>
+                    <button type="button" class="choice" data-value="dots"><span class="big">⠿</span><small>Year in dots</small></button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <span class="label">Show</span>
+                <div class="toggle-group">
+                    <div class="toggle-item">
+                        <span>Percentage</span>
+                        <label class="toggle-switch"><input type="checkbox" data-key="showPercent"><span class="slider"></span></label>
+                    </div>
+                    <div class="toggle-item">
+                        <span>Days left</span>
+                        <label class="toggle-switch"><input type="checkbox" data-key="showDaysLeft"><span class="slider"></span></label>
+                    </div>
+                    <div class="toggle-item">
+                        <span>Day X of 365</span>
+                        <label class="toggle-switch"><input type="checkbox" data-key="showDayOf"><span class="slider"></span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="decimals">Percentage detail</label>
+                <select id="decimals" data-key="decimals">
+                    <option value="0">Whole number (42%)</option>
+                    <option value="1">One decimal (42.3%)</option>
+                    <option value="2">Two decimals (42.37%)</option>
+                </select>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section-title">Style</div>
+
+            <div class="form-group">
+                <span class="label">Color Theme</span>
+                <div class="presets" id="presets"></div>
+                <div class="hint">Pick a preset, then fine-tune any color below.</div>
+            </div>
+
+            <div class="form-group">
+                <span class="label">Colors</span>
+                <div class="colors">
+                    <div class="color-item"><input type="color" data-color="bgColor"><div><div class="name">Background</div><div class="hex" data-hex="bgColor"></div></div></div>
+                    <div class="color-item"><input type="color" data-color="textColor"><div><div class="name">Text</div><div class="hex" data-hex="textColor"></div></div></div>
+                    <div class="color-item"><input type="color" data-color="accentColor"><div><div class="name">Accent</div><div class="hex" data-hex="accentColor"></div></div></div>
+                    <div class="color-item"><input type="color" data-color="softColor"><div><div class="name">Track</div><div class="hex" data-hex="softColor"></div></div></div>
+                    <div class="color-item"><input type="color" data-color="mutedColor"><div><div class="name">Small labels</div><div class="hex" data-hex="mutedColor"></div></div></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group" style="grid-template-columns: 1fr;">
+                    <div class="toggle-item">
+                        <span>Transparent background <small style="color:#718096">(blends into your Notion page)</small></span>
+                        <label class="toggle-switch"><input type="checkbox" id="transparent-bg"><span class="slider"></span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <span class="label">Font</span>
+                <div class="choice-group" data-key="font">
+                    <button type="button" class="choice" data-value="serif"><span class="big" style="font-family: Georgia, serif; font-style: italic;">Ag</span><small>Elegant serif</small></button>
+                    <button type="button" class="choice" data-value="sans"><span class="big" style="font-family: -apple-system, sans-serif;">Ag</span><small>Clean sans</small></button>
+                    <button type="button" class="choice" data-value="hand"><span class="big" style="font-family: 'Bradley Hand', 'Segoe Print', cursive;">Ag</span><small>Handwritten</small></button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <span class="label">Alignment</span>
+                <div class="choice-group" data-key="align">
+                    <button type="button" class="choice" data-value="left">⬅️ Left</button>
+                    <button type="button" class="choice" data-value="center">↔️ Center</button>
+                    <button type="button" class="choice" data-value="right">➡️ Right</button>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <div class="preview-label">Live Preview</div>
+                <div class="preview-frame-wrap"><iframe id="preview-frame" title="Widget preview"></iframe></div>
+            </div>
+
+            <button type="submit" class="generate-btn">Generate</button>
+        </form>
+
+        <div id="result-section" class="result-section">
+            <div class="result-label">✅ Your Year Progress Widget URL:</div>
+            <div id="url-display" class="url-display"></div>
+            <button id="copy-btn" class="copy-btn" type="button">Copy URL</button>
+
+            <div class="instructions">
+                <strong>How to add to Notion:</strong><br>
+                1. Copy the URL above<br>
+                2. In your Notion page, type <code>/embed</code><br>
+                3. Paste the URL and press Enter<br>
+                4. Drag the corners to resize your widget
+            </div>
+        </div>
+
+        <div class="footer">
+            Made with ♥ by <a href="https://kdigitalstudio.com" target="_blank">KDigitalStudio</a>
+        </div>
+    </div>
+
+    <script>
+        // ---------- widget-specific settings ----------
+
+        const DEFAULTS = {
+            year: '2027', label: '2027', style: 'ring', align: 'center', decimals: '0',
+            showPercent: true, showDaysLeft: true, showDayOf: false
+        };
+
+        function extraParams(p, s) {
+            p.set('year', s.year || '2027');
+            p.set('label', s.label);
+            p.set('style', s.style);
+            p.set('align', s.align);
+            p.set('decimals', s.decimals);
+            p.set('showPercent', s.showPercent);
+            p.set('showDaysLeft', s.showDaysLeft);
+            p.set('showDayOf', s.showDayOf);
+        }
+
+        // Keep the label in step with the year until someone types a custom label
+        let lastYear = DEFAULTS.year;
+        function init() {
+            const yearInput = document.getElementById('year');
+            const labelInput = document.getElementById('label');
+            yearInput.addEventListener('input', () => {
+                if (state.label === lastYear) {
+                    state.label = yearInput.value;
+                    labelInput.value = yearInput.value;
+                }
+                lastYear = yearInput.value;
+            });
+        }
+    </script>
+
+    <script>
+        // ---------- shared builder logic ----------
+        const WIDGET_FILE = 'year-progress-widget.html';
+        const WIDGET_BASE_URL = 'https://kdigitalstudio.github.io/notion-year-progress/' + WIDGET_FILE;
+
+        const PRESETS = [
+            { name: 'Oat',    bgColor: '#F7F2EA', textColor: '#3D342C', accentColor: '#A9825A', softColor: '#E9DFD1', mutedColor: '#8C7B6B' },
+            { name: 'Linen',  bgColor: '#FFFFFF', textColor: '#37352F', accentColor: '#B49A7A', softColor: '#EFE9E1', mutedColor: '#9A8F84' },
+            { name: 'Sage',   bgColor: '#EFF1EA', textColor: '#353B30', accentColor: '#87957A', softColor: '#DCE1D3', mutedColor: '#7E8776' },
+            { name: 'Clay',   bgColor: '#F7ECE5', textColor: '#4A3329', accentColor: '#BF7F62', softColor: '#EDD9CD', mutedColor: '#957A6D' },
+            { name: 'Mocha',  bgColor: '#2A2421', textColor: '#F3EBE2', accentColor: '#CDA882', softColor: '#43392F', mutedColor: '#A8998A' }
+        ];
+        const COLOR_KEYS = ['bgColor', 'textColor', 'accentColor', 'softColor', 'mutedColor'];
+
+        // Each builder fills `state` with its own defaults and provides extraParams()
+        const state = Object.assign({ font: 'serif', transparent: false }, PRESETS[0], DEFAULTS);
+
+        const form = document.getElementById('builder-form');
+        const previewFrame = document.getElementById('preview-frame');
+        const resultSection = document.getElementById('result-section');
+        const urlDisplay = document.getElementById('url-display');
+        const copyBtn = document.getElementById('copy-btn');
+
+        // Presets
+        const presetsEl = document.getElementById('presets');
+        PRESETS.forEach((p, i) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'preset' + (i === 0 ? ' selected' : '');
+            b.innerHTML = '<div class="swatch"><i style="background:' + p.bgColor + '"></i><i style="background:' + p.softColor + '"></i><i style="background:' + p.accentColor + '"></i></div><small>' + p.name + '</small>';
+            b.addEventListener('click', () => {
+                presetsEl.querySelectorAll('.preset').forEach(x => x.classList.remove('selected'));
+                b.classList.add('selected');
+                COLOR_KEYS.forEach(k => state[k] = p[k]);
+                syncColorInputs();
+                updatePreview();
+            });
+            presetsEl.appendChild(b);
+        });
+
+        // Color pickers
+        function syncColorInputs() {
+            COLOR_KEYS.forEach(k => {
+                document.querySelector('[data-color="' + k + '"]').value = state[k];
+                document.querySelector('[data-hex="' + k + '"]').textContent = state[k].toUpperCase();
+            });
+        }
+        document.querySelectorAll('[data-color]').forEach(inp => {
+            inp.addEventListener('input', () => {
+                state[inp.dataset.color] = inp.value;
+                document.querySelector('[data-hex="' + inp.dataset.color + '"]').textContent = inp.value.toUpperCase();
+                presetsEl.querySelectorAll('.preset').forEach(x => x.classList.remove('selected'));
+                updatePreview();
+            });
+        });
+        syncColorInputs();
+
+        document.getElementById('transparent-bg').addEventListener('change', e => {
+            state.transparent = e.target.checked;
+            updatePreview();
+        });
+
+        // Option cards
+        document.querySelectorAll('.choice-group').forEach(group => {
+            const key = group.dataset.key;
+            group.querySelectorAll('.choice').forEach(c => {
+                if (c.dataset.value === String(state[key])) c.classList.add('selected');
+                c.addEventListener('click', () => {
+                    group.querySelectorAll('.choice').forEach(x => x.classList.remove('selected'));
+                    c.classList.add('selected');
+                    state[key] = c.dataset.value;
+                    if (typeof onChoice === 'function') onChoice(key, c.dataset.value);
+                    updatePreview();
+                });
+            });
+        });
+
+        // Simple fields: [data-key] on text/number/select/checkbox
+        document.querySelectorAll('input[data-key], textarea[data-key], select[data-key]').forEach(inp => {
+            const key = inp.dataset.key;
+            if (inp.type === 'checkbox') inp.checked = !!state[key];
+            else inp.value = state[key] == null ? '' : state[key];
+            inp.addEventListener(inp.type === 'checkbox' || inp.tagName === 'SELECT' ? 'change' : 'input', () => {
+                state[key] = inp.type === 'checkbox' ? inp.checked : inp.value;
+                updatePreview();
+            });
+        });
+
+        function buildParams() {
+            const p = new URLSearchParams();
+            extraParams(p, state);
+            p.set('font', state.font);
+            COLOR_KEYS.forEach(k => p.set(k, k === 'bgColor' && state.transparent ? 'transparent' : state[k]));
+            return p;
+        }
+
+        let previewTimer = null;
+        function updatePreview() {
+            clearTimeout(previewTimer);
+            previewTimer = setTimeout(() => {
+                previewFrame.src = WIDGET_FILE + '?' + buildParams().toString();
+            }, 200);
+        }
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            if (typeof beforeGenerate === 'function') beforeGenerate(state);
+            urlDisplay.textContent = WIDGET_BASE_URL + '?' + buildParams().toString();
+            resultSection.classList.add('show');
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+
+        function flashCopied(ok) {
+            copyBtn.textContent = ok ? '✓ Copied!' : '❌ Copy failed - please select and copy manually';
+            copyBtn.classList.toggle('copied', ok);
+            setTimeout(() => { copyBtn.textContent = 'Copy URL'; copyBtn.classList.remove('copied'); }, ok ? 2000 : 3000);
+        }
+        function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (err) {}
+            document.body.removeChild(ta);
+            flashCopied(ok);
+        }
+        copyBtn.addEventListener('click', () => {
+            const url = urlDisplay.textContent;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => flashCopied(true)).catch(() => fallbackCopy(url));
+            } else {
+                fallbackCopy(url);
+            }
+        });
+
+        if (typeof init === 'function') init();
+        updatePreview();
+    </script>
+</body>
+</html>
